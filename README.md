@@ -12,5 +12,5 @@ This **GitHub** repository contains information supporting the presentation "AI 
 - [Ticket Classification](./ticket-classification.md) - Prompts to classify a helpdesk ticket
 - [Printer Failure Preduction](./printer-failure-prediction.md) - Guide to predicting printer failures using AI to assist
 - [Xero Transaction Analysis](./xero-transaction-analysis.md) - Guide to analysing Xero transactions using AI to assist
-- 
+- [Predictive Analytics](./predictive-analytics.md) - Guide to using predictive analytics in an MSP
 
