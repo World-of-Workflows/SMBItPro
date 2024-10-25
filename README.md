@@ -9,3 +9,5 @@ This **GitHub** repository contains information supporting the presentation "AI 
 - [Service Desk Transformation](./transform-service-desk.md) - Transforming the Servce Desk
   - [Service Desk Demo](./servicedeskdemo.md) - A demo of a service desk interaction
   - [Vodafone Tobi](./vftobi.md) - Vodafone Tobi Solution
+- [Ticket Classification](./ticket-classification.md) - Prompts to classify a helpdesk ticket
+
