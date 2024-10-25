@@ -5,3 +5,7 @@ This **GitHub** repository contains information supporting the presentation "AI 
 # Contents
 
 - [What is AI Really?](./what-is-ai.md) - This gives a detailed overview of AI, how it works, current models and how to access them.
+- [A Day in the life of a MSP](./day-in-the-life.md) - This gives a detailed overview of what a day in the life of an MSP looks like.
+- [Service Desk Transformation](./transform-service-desk.md) - Transforming the Servce Desk
+  - [Service Desk Demo](./servicedeskdemo.md) - A demo of a service desk interaction
+  - [Vodafone Tobi](./vftobi.md) - Vodafone Tobi Solution
