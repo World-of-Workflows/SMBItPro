@@ -10,4 +10,7 @@ This **GitHub** repository contains information supporting the presentation "AI 
   - [Service Desk Demo](./servicedeskdemo.md) - A demo of a service desk interaction
   - [Vodafone Tobi](./vftobi.md) - Vodafone Tobi Solution
 - [Ticket Classification](./ticket-classification.md) - Prompts to classify a helpdesk ticket
+- [Printer Failure Preduction](./printer-failure-prediction.md) - Guide to predicting printer failures using AI to assist
+- [Xero Transaction Analysis](./xero-transaction-analysis.md) - Guide to analysing Xero transactions using AI to assist
+- 
 
