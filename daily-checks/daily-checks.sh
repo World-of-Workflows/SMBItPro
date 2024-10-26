@@ -1,34 +1,44 @@
 #!/bin/bash
-# File: daily_linux_check.sh
-LOGFILE="/var/log/daily_checks.log"
 
-# System uptime
-echo "Uptime:" >> $LOGFILE
-uptime >> $LOGFILE
+# Variables
+TO="helpdesk@mynewmsp.com"
+SUBJECT="Daily Server Report - $(hostname) - $(date +'%Y-%m-%d')"
+TMPFILE="/tmp/daily_report_$(date +'%Y%m%d').txt"
 
-# Disk usage
-echo "Disk Usage:" >> $LOGFILE
-df -h >> $LOGFILE
+# Start the report
+echo "Daily Server Report for $(hostname) - $(date)" > $TMPFILE
+echo "-----------------------------------------" >> $TMPFILE
 
-# Memory usage
-echo "Memory Usage:" >> $LOGFILE
-free -h >> $LOGFILE
+# Disk Usage
+echo -e "\nDisk Usage:" >> $TMPFILE
+df -h >> $TMPFILE
 
-# CPU load
-echo "CPU Load:" >> $LOGFILE
-top -b -n 1 | head -n 10 >> $LOGFILE
+# CPU and Memory Usage
+echo -e "\nCPU and Memory Usage:" >> $TMPFILE
+top -b -n1 | head -n 15 >> $TMPFILE
 
-# Check for failed systemd services
-echo "Failed Services:" >> $LOGFILE
-systemctl --failed >> $LOGFILE
+# Service Status
+echo -e "\nFailed Services:" >> $TMPFILE
+systemctl list-units --state=failed >> $TMPFILE
 
-# Check for root logins
-echo "Root Login Attempts:" >> $LOGFILE
-grep "session opened for user root" /var/log/auth.log >> $LOGFILE
+# Hardware Health
+echo -e "\nHardware Errors:" >> $TMPFILE
+dmesg | grep -i error >> $TMPFILE
 
-# Check for package updates
-echo "Package Updates:" >> $LOGFILE
-apt list --upgradable >> $LOGFILE
+# System Logs Errors
+echo -e "\nSystem Log Errors:" >> $TMPFILE
+journalctl -p 3 -xb >> $TMPFILE
 
-# Notify upon completion
-echo "Daily check completed on $(date)" >> $LOGFILE
+# Security Events
+echo -e "\nSecurity Events:" >> $TMPFILE
+grep -i "failed password" /var/log/auth.log | tail -n 10 >> $TMPFILE
+
+# Backup Status
+echo -e "\nBackup Status:" >> $TMPFILE
+tail -n 20 /var/log/backup.log >> $TMPFILE
+
+# Send the email
+mail -s "$SUBJECT" "$TO" < $TMPFILE
+
+# Clean up
+rm $TMPFILE

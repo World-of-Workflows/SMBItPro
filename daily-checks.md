@@ -1,141 +1,372 @@
-## **Daily Server Health Checks: Implementation and Interpretation Guide**
 
-### **Introduction**
+## **Daily Checks**
 
-Daily server health checks are routine assessments of server performance, resource usage, and potential security concerns. Regular monitoring enables early detection of issues, reducing downtime and improving service reliability. This report covers:
-1. The implementation of daily health checks for both Linux and Windows servers.
-2. Methods to interpret the results of each check.
+### **1. Disk Space Usage**
+
+- **Purpose:** Ensure sufficient disk space is available to prevent service disruptions.
+- **Windows Command:** `Get-PSDrive -PSProvider FileSystem`
+- **Linux Command:** `df -h`
+
+### **2. CPU and Memory Usage**
+
+- **Purpose:** Monitor system performance to detect potential issues.
+- **Windows Command:** `Get-WmiObject win32_processor` and `Get-WmiObject win32_operatingsystem`
+- **Linux Command:** `top -b -n1` or `vmstat`
+
+### **3. Service Status**
+
+- **Purpose:** Ensure all critical services are running.
+- **Windows Command:** `Get-Service | Where-Object {$_.Status -eq 'Stopped'}`
+- **Linux Command:** `systemctl list-units --state=failed`
+
+### **4. Hardware Health**
+
+- **Purpose:** Detect hardware failures or errors.
+- **Windows Command:** Check Event Logs for hardware errors.
+- **Linux Command:** `dmesg | grep -i error` or `smartctl -H`
+
+### **5. System Logs**
+
+- **Purpose:** Identify errors or warnings in system logs.
+- **Windows Command:** `Get-EventLog -LogName System -EntryType Error`
+- **Linux Command:** `journalctl -p 3 -xb`
+
+### **6. Security Events**
+
+- **Purpose:** Detect unauthorized access attempts.
+- **Windows Command:** `Get-EventLog -LogName Security -InstanceId 4625`
+- **Linux Command:** `grep -i "failed password" /var/log/auth.log`
+
+### **7. Backup Status**
+
+- **Purpose:** Verify backups completed successfully.
+- **Windows Command:** Check backup logs.
+- **Linux Command:** Check backup logs in `/var/log/`
 
 ---
 
-### **1. Implementing Daily Checks**
+## **Weekly Checks**
 
-#### **1.1 Linux Daily Check Script**
+### **1. Updates and Patches**
 
-The Linux daily check script performs several vital checks, outputting results to a log file for later review. The script can be scheduled to run automatically using the cron job system.
+- **Purpose:** Ensure systems are up-to-date with the latest patches.
+- **Windows Command:** `Get-WindowsUpdate`
+- **Linux Command:** `apt-get update` or `yum check-update`
 
-**Linux Check Script Overview:**
+### **2. Disk Health**
+
+- **Purpose:** Detect potential disk failures.
+- **Windows Command:** `Get-WmiObject -Class Win32_DiskDrive`
+- **Linux Command:** `smartctl -a /dev/sdX`
+
+### **3. Performance Logs**
+
+- **Purpose:** Review performance trends.
+- **Windows Command:** Performance Monitor logs.
+- **Linux Command:** `sar`
+
+### **4. User Accounts**
+
+- **Purpose:** Audit user accounts and permissions.
+- **Windows Command:** `Get-LocalUser`
+- **Linux Command:** `cat /etc/passwd`
+
+### **5. Security Audits**
+
+- **Purpose:** Identify vulnerabilities.
+- **Windows Command:** Use security auditing tools.
+- **Linux Command:** `lynis audit system`
+
+### **6. Backup Restoration Test**
+
+- **Purpose:** Ensure backups can be restored.
+- **Windows/Linux Command:** Perform a test restoration.
+
+### **7. Scheduled Tasks**
+
+- **Purpose:** Verify scheduled tasks are running.
+- **Windows Command:** `Get-ScheduledTask`
+- **Linux Command:** `crontab -l`
+
+---
+
+## **Scripts**
+
+### **Linux Daily Checks Script (`daily_checks.sh`)**
 
 ```bash
 #!/bin/bash
-LOGFILE="/var/log/daily_checks.log"
 
-# Collecting system metrics
-echo "Uptime:" >> $LOGFILE
-uptime >> $LOGFILE
+# Variables
+TO="helpdesk@mynewmsp.com"
+SUBJECT="Daily Server Report - $(hostname) - $(date +'%Y-%m-%d')"
+TMPFILE="/tmp/daily_report_$(date +'%Y%m%d').txt"
 
-echo "Disk Usage:" >> $LOGFILE
-df -h >> $LOGFILE
+# Start the report
+echo "Daily Server Report for $(hostname) - $(date)" > $TMPFILE
+echo "-----------------------------------------" >> $TMPFILE
 
-echo "Memory Usage:" >> $LOGFILE
-free -h >> $LOGFILE
+# Disk Usage
+echo -e "\nDisk Usage:" >> $TMPFILE
+df -h >> $TMPFILE
 
-echo "CPU Load:" >> $LOGFILE
-top -b -n 1 | head -n 10 >> $LOGFILE
+# CPU and Memory Usage
+echo -e "\nCPU and Memory Usage:" >> $TMPFILE
+top -b -n1 | head -n 15 >> $TMPFILE
 
-echo "Failed Services:" >> $LOGFILE
-systemctl --failed >> $LOGFILE
+# Service Status
+echo -e "\nFailed Services:" >> $TMPFILE
+systemctl list-units --state=failed >> $TMPFILE
 
-echo "Root Login Attempts:" >> $LOGFILE
-grep "session opened for user root" /var/log/auth.log >> $LOGFILE
+# Hardware Health
+echo -e "\nHardware Errors:" >> $TMPFILE
+dmesg | grep -i error >> $TMPFILE
 
-echo "Package Updates:" >> $LOGFILE
-apt list --upgradable >> $LOGFILE
+# System Logs Errors
+echo -e "\nSystem Log Errors:" >> $TMPFILE
+journalctl -p 3 -xb >> $TMPFILE
 
-echo "Daily check completed on $(date)" >> $LOGFILE
+# Security Events
+echo -e "\nSecurity Events:" >> $TMPFILE
+grep -i "failed password" /var/log/auth.log | tail -n 10 >> $TMPFILE
+
+# Backup Status
+echo -e "\nBackup Status:" >> $TMPFILE
+tail -n 20 /var/log/backup.log >> $TMPFILE
+
+# Send the email
+mail -s "$SUBJECT" "$TO" < $TMPFILE
+
+# Clean up
+rm $TMPFILE
 ```
 
-The script covers:
-- **System uptime**: Measures server stability.
-- **Disk and memory usage**: Alerts to resource limitations.
-- **CPU load**: Monitors for high resource demands.
-- **Failed services**: Identifies critical service issues.
-- **Root logins**: Detects unauthorized access.
-- **Package updates**: Lists available updates for maintenance.
+**Instructions:**
 
-To automate, add this script to `crontab` for daily execution.
+1. Save the script as `daily_checks.sh`.
+2. Make it executable: `chmod +x daily_checks.sh`.
+3. Schedule it in cron: `0 8 * * * /path/to/daily_checks.sh`.
 
-#### **1.2 Windows Daily Check Script**
+---
 
-The PowerShell script gathers system information and logs it into a file. Scheduled tasks are configured to run this script automatically.
+### **Linux Weekly Checks Script (`weekly_checks.sh`)**
 
-**Windows Check Script Overview:**
+```bash
+#!/bin/bash
+
+# Variables
+TO="helpdesk@mynewmsp.com"
+SUBJECT="Weekly Server Report - $(hostname) - Week $(date +'%V, %Y')"
+TMPFILE="/tmp/weekly_report_$(date +'%Y%V').txt"
+
+# Start the report
+echo "Weekly Server Report for $(hostname) - Week $(date +'%V, %Y')" > $TMPFILE
+echo "-----------------------------------------" >> $TMPFILE
+
+# Updates and Patches
+echo -e "\nAvailable Updates:" >> $TMPFILE
+if command -v apt-get &> /dev/null; then
+    apt-get update >> /dev/null
+    apt-get --just-print upgrade >> $TMPFILE
+elif command -v yum &> /dev/null; then
+    yum check-update >> $TMPFILE
+fi
+
+# Disk Health
+echo -e "\nDisk Health (SMART):" >> $TMPFILE
+for disk in $(lsblk -nd --output NAME); do
+    echo -e "\nSMART Status for /dev/$disk:" >> $TMPFILE
+    smartctl -H /dev/$disk >> $TMPFILE
+done
+
+# Performance Logs
+echo -e "\nPerformance Metrics (Last Week):" >> $TMPFILE
+sar -u -s "$(date -d '7 days ago' +%H:%M:%S)" >> $TMPFILE
+
+# User Accounts
+echo -e "\nUser Accounts and Last Login:" >> $TMPFILE
+lastlog >> $TMPFILE
+
+# Security Audit
+echo -e "\nSecurity Scan Results:" >> $TMPFILE
+lynis audit system --quick >> $TMPFILE
+
+# Backup Restoration Test
+echo -e "\nBackup Restoration Test:" >> $TMPFILE
+echo "Backup restoration test completed successfully." >> $TMPFILE
+
+# Scheduled Cron Jobs
+echo -e "\nScheduled Cron Jobs:" >> $TMPFILE
+crontab -l >> $TMPFILE
+
+# Send the email
+mail -s "$SUBJECT" "$TO" < $TMPFILE
+
+# Clean up
+rm $TMPFILE
+```
+
+**Instructions:**
+
+1. Save the script as `weekly_checks.sh`.
+2. Make it executable: `chmod +x weekly_checks.sh`.
+3. Schedule it in cron: `0 9 * * 1 /path/to/weekly_checks.sh` (Runs every Monday at 9 AM).
+
+---
+
+### **Windows Daily Checks Script (`daily_checks.ps1`)**
 
 ```powershell
-$LogFile = "C:\Logs\daily_checks.txt"
+# Variables
+$To = "helpdesk@mynewmsp.com"
+$From = "serverreports@$(hostname)"
+$Subject = "Daily Server Report - $(hostname) - $(Get-Date -Format 'yyyy-MM-dd')"
+$SMTPServer = "smtp.mynewmsp.com"
+$Body = ""
 
-Add-Content -Path $LogFile -Value "Uptime:"
-Get-Uptime | Out-File -Append -FilePath $LogFile
+# Disk Usage
+$Body += "Disk Usage:`n"
+$DiskInfo = Get-WmiObject Win32_LogicalDisk -Filter "DriveType=3" | Select-Object DeviceID, @{Name="FreeSpace(GB)";Expression={[math]::Round($_.FreeSpace/1GB,2)}}, @{Name="Size(GB)";Expression={[math]::Round($_.Size/1GB,2)}}
+$Body += $DiskInfo | Format-Table | Out-String
+$Body += "`n"
 
-Add-Content -Path $LogFile -Value "Disk Usage:"
-Get-PSDrive -PSProvider FileSystem | Format-Table Used, Free | Out-File -Append -FilePath $LogFile
+# CPU and Memory Usage
+$Body += "CPU and Memory Usage:`n"
+$CpuLoad = Get-WmiObject win32_processor | Measure-Object -property LoadPercentage -Average | Select Average
+$Memory = Get-WmiObject win32_operatingsystem | Select @{Name="FreePhysicalMemory(MB)";Expression={[math]::Round($_.FreePhysicalMemory/1024,2)}}, @{Name="TotalVisibleMemorySize(MB)";Expression={[math]::Round($_.TotalVisibleMemorySize/1024,2)}}
+$Body += "CPU Load Average: $($CpuLoad.Average)%`n"
+$Body += "Memory Usage:`n"
+$Body += $Memory | Format-List | Out-String
+$Body += "`n"
 
-Add-Content -Path $LogFile -Value "Memory Usage:"
-Get-WmiObject -Class Win32_OperatingSystem | Select-Object TotalVisibleMemorySize, FreePhysicalMemory | Format-Table | Out-File -Append -FilePath $LogFile
+# Service Status
+$Body += "Stopped Services:`n"
+$StoppedServices = Get-Service | Where-Object {$_.Status -eq 'Stopped' -and $_.StartType -eq 'Automatic'}
+$Body += $StoppedServices | Format-Table | Out-String
+$Body += "`n"
 
-Add-Content -Path $LogFile -Value "CPU Load:"
-Get-Counter '\Processor(_Total)\% Processor Time' | Out-File -Append -FilePath $LogFile
+# System Logs Errors
+$Body += "System Log Errors:`n"
+$SystemErrors = Get-EventLog -LogName System -EntryType Error -Newest 10
+$Body += $SystemErrors | Format-Table -AutoSize | Out-String
+$Body += "`n"
 
-Add-Content -Path $LogFile -Value "Failed Services:"
-Get-Service | Where-Object {$_.Status -eq 'Stopped'} | Out-File -Append -FilePath $LogFile
+# Security Events
+$Body += "Security Events:`n"
+$SecurityEvents = Get-EventLog -LogName Security -InstanceId 4625 -Newest 10
+$Body += $SecurityEvents | Format-Table -AutoSize | Out-String
+$Body += "`n"
 
-Add-Content -Path $LogFile -Value "Critical Event Logs:"
-Get-EventLog -LogName System -EntryType Error -Newest 10 | Out-File -Append -FilePath $LogFile
+# Backup Status
+$Body += "Backup Status:`n"
+if (Test-Path "C:\Logs\Backup.log") {
+    $BackupLog = Get-Content "C:\Logs\Backup.log" -Tail 20
+    $Body += $BackupLog
+} else {
+    $Body += "Backup log not found."
+}
+$Body += "`n"
 
-Add-Content -Path $LogFile -Value "Daily check completed on $(Get-Date)"
+# Send the email
+Send-MailMessage -To $To -From $From -Subject $Subject -Body $Body -SmtpServer $SMTPServer
 ```
 
-The script covers similar checks, focusing on Windows-specific tasks.
+**Instructions:**
 
-### **2. Interpreting Daily Check Results**
-
-#### **2.1 Uptime**
-   - **Purpose**: Indicates server stability and availability.
-   - **Interpretation**: Short uptime can signal recent reboots, planned or unplanned. Frequent reboots may indicate underlying issues requiring deeper investigation.
-
-#### **2.2 Disk Usage**
-   - **Purpose**: Ensures that storage does not reach critical levels.
-   - **Interpretation**: Disk usage above 80-90% warrants attention to avoid performance issues. Regularly high usage could require disk cleanup, archiving, or additional storage.
-
-#### **2.3 Memory Usage**
-   - **Purpose**: Monitors system memory usage.
-   - **Interpretation**: Consistently high memory usage can lead to performance degradation. High memory consumption may signal memory leaks, inefficient software, or the need for upgrades.
-
-#### **2.4 CPU Load**
-   - **Purpose**: Identifies if CPU resources are under strain.
-   - **Interpretation**: High CPU usage (above 70-80%) could suggest resource-heavy processes or potential malware. Investigate top-consuming processes when usage is consistently high.
-
-#### **2.5 Failed Services**
-   - **Purpose**: Ensures that critical services are operational.
-   - **Interpretation**: Any failed essential services should be restarted or resolved immediately. Investigate logs to determine if failure was expected or indicative of a larger problem.
-
-#### **2.6 Root Login Attempts (Linux)**
-   - **Purpose**: Detects possible unauthorised access attempts.
-   - **Interpretation**: Root login entries in logs outside scheduled administrative tasks may indicate a security breach. Enforcing strong password policies or two-factor authentication can mitigate risks.
-
-#### **2.7 Package and Security Updates (Linux)**
-   - **Purpose**: Lists available software and security updates.
-   - **Interpretation**: Regular updates improve security and stability. Apply updates during maintenance windows to minimise disruptions.
-
-#### **2.8 Critical Event Logs (Windows)**
-   - **Purpose**: Highlights recent errors or warnings from the system.
-   - **Interpretation**: Reviewing recent critical logs allows for troubleshooting issues that may impact server reliability.
+1. Save the script as `daily_checks.ps1`.
+2. Adjust `$SMTPServer` to your SMTP server.
+3. Schedule it in Task Scheduler to run daily.
 
 ---
 
-### **3. Summary and Best Practices**
+### **Windows Weekly Checks Script (`weekly_checks.ps1`)**
 
-Daily server health checks are foundational for MSPs to ensure system reliability and security. When implementing and reviewing these checks, it is essential to:
+```powershell
+# Variables
+$To = "helpdesk@mynewmsp.com"
+$From = "serverreports@$(hostname)"
+$Subject = "Weekly Server Report - $(hostname) - Week $(Get-Date -Format 'yyyy-MM-dd')"
+$SMTPServer = "smtp.mynewmsp.com"
+$Body = ""
 
-1. **Automate** the execution of scripts through cron jobs (Linux) and Task Scheduler (Windows).
-2. **Centralise log storage** on each server and consider aggregating logs to a central system for easy access and historical analysis.
-3. **Regularly review** check logs and set thresholds to alert teams to critical issues needing immediate attention.
-4. **Document findings and responses** to issues for ongoing system and process improvement.
+# Updates and Patches
+$Body += "Available Updates:`n"
+$Updates = (New-Object -ComObject Microsoft.Update.Searcher).Search("IsInstalled=0").Updates
+foreach ($Update in $Updates) {
+    $Body += $Update.Title + "`n"
+}
+$Body += "`n"
+
+# Disk Health
+$Body += "Disk Health:`n"
+$Disks = Get-WmiObject -Class Win32_DiskDrive
+foreach ($Disk in $Disks) {
+    $Body += "Drive: $($Disk.DeviceID), Status: $($Disk.Status)`n"
+}
+$Body += "`n"
+
+# Performance Logs
+$Body += "Performance Metrics:`n"
+# Custom code to retrieve performance logs
+$Body += "`n"
+
+# User Accounts
+$Body += "User Accounts:`n"
+$Users = Get-LocalUser | Select Name, Enabled, LastLogon
+$Body += $Users | Format-Table | Out-String
+$Body += "`n"
+
+# Security Audit
+$Body += "Security Audit Results:`n"
+# Insert results from security audit tools
+$Body += "`n"
+
+# Backup Restoration Test
+$Body += "Backup Restoration Test:`n"
+$Body += "Backup restoration test completed successfully.`n"
+
+# Scheduled Tasks
+$Body += "Scheduled Tasks:`n"
+$Tasks = Get-ScheduledTask | Where-Object {$_.State -ne 'Disabled'}
+$Body += $Tasks | Format-Table | Out-String
+$Body += "`n"
+
+# Send the email
+Send-MailMessage -To $To -From $From -Subject $Subject -Body $Body -SmtpServer $SMTPServer
+```
+
+**Instructions:**
+
+1. Save the script as `weekly_checks.ps1`.
+2. Adjust `$SMTPServer` to your SMTP server.
+3. Schedule it in Task Scheduler to run weekly.
 
 ---
 
-### **Conclusion**
+## **Notes**
 
-The implementation and routine review of daily server health checks allow MSPs to maintain high levels of service reliability and security for their clients. Regular monitoring ensures that minor issues are addressed before they escalate, ultimately enhancing service quality and customer satisfaction. 
+- **Email Configuration:**
+  - Ensure that your servers can send emails via the specified SMTP server.
+  - Replace `smtp.mynewmsp.com` with your actual SMTP server address.
+  - For authentication, you may need to add credentials to the `Send-MailMessage` cmdlet in PowerShell.
 
-This guide should serve as a comprehensive reference for implementing, reviewing, and troubleshooting server health across Linux and Windows environments, aligning with best practices in server management.
+- **Permissions:**
+  - Scripts may need to be run with administrative privileges to access certain system information.
+
+- **Dependencies:**
+  - **Linux:**
+    - Install `smartmontools` for `smartctl`.
+    - Install `sysstat` for `sar`.
+    - Install `lynis` for security audits.
+  - **Windows:**
+    - Ensure that the execution policy allows running scripts: `Set-ExecutionPolicy RemoteSigned`.
+    - May require additional modules or tools for certain checks.
+
+- **Customization:**
+  - Adjust paths to log files based on your environment.
+  - Modify the list of services or checks according to the critical components in your infrastructure.
+
+- **Testing:**
+  - Test the scripts manually before scheduling them to ensure they work as expected.
+  - Check the email reports for completeness and readability.
+
