@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Event Log Security Analyzer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Event Log Security Analyzer</h1>
+        <p>Upload your Event logs to detect potential security issues using AI.</p>
+        <form id="upload-form">
+            <input type="file" id="log-file" accept=".txt,.log">
+            <button type="submit">Analyze Logs</button>
+        </form>
+        <div id="loader" class="loader" style="display: none;"></div>
+        <div id="result"></div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
